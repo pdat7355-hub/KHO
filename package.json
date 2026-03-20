@@ -1,0 +1,22 @@
+{
+  "name": "huong-kid-inventory-admin",
+  "version": "1.0.0",
+  "description": "Hệ thống quản lý nhập kho thông minh cho Shop Hương Kid",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test info\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.6.0",
+    "google-spreadsheet": "^4.1.1",
+    "google-auth-library": "^9.0.0",
+    "path": "^0.12.7"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "Phan Quốc Đạt",
+  "license": "ISC"
+}

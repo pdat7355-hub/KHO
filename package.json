@@ -1,7 +1,7 @@
 {
   "name": "kho-huong-kid",
   "version": "1.0.0",
-  "description": "He thong nhap kho AI",
+  "description": "He thong nhap kho AI Huong Kid",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -11,8 +11,8 @@
     "axios": "^1.6.2",
     "multer": "^1.4.5-lts.1",
     "form-data": "^4.0.0",
+    "@google/generative-ai": "^0.21.0",
     "google-spreadsheet": "^4.1.1",
-    "google-auth-library": "^9.4.1",
-    "@google/generative-ai": "^0.21.0"
+    "google-auth-library": "^9.4.1"
   }
 }

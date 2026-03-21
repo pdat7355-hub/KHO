@@ -1,18 +1,63 @@
-<div id="st" style="margin: 10px 0; text-align: center; font-weight: bold; font-size: 14px;"></div>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Kho Hương Kid</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
+        .card { background: white; padding: 20px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h3 { text-align: center; color: #1877f2; }
+        input, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 14px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 16px; }
+        .btn-blue { background: #1877f2; color: white; }
+        .btn-green { background: #42b72a; color: white; margin-top: 15px; }
+        #st { text-align: center; margin: 10px 0; font-weight: bold; font-size: 14px; color: #555; }
+        .debug { background: #fff3cd; padding: 10px; border-radius: 5px; font-size: 11px; margin-top: 10px; display: none; word-break: break-all; border: 1px solid #ffeeba; }
+    </style>
+</head>
+<body>
 
-<div id="debugBox" style="display:none; background: #fff3cd; padding: 10px; border: 1px solid #ffeeba; border-radius: 5px; font-family: monospace; font-size: 12px; margin-bottom: 10px;">
-    <strong>🤖 AI gửi về:</strong> <span id="rawAiOutput"></span>
+<div class="card">
+    <h3>📦 Nhập Kho Hương Kid</h3>
+    
+    <input type="password" id="pass" placeholder="Mật khẩu">
+    <textarea id="rawData" rows="3" placeholder="Nhập câu lệnh (VD: Áo thun 120k size 5)"></textarea>
+    
+    <button class="btn-blue" onclick="analyze()">1. PHÂN TÍCH DỮ LIỆU</button>
+    
+    <div id="st">Nhập thông tin rồi bấm Phân tích nhé Đạt</div>
+    
+    <div id="debug" class="debug"></div>
+
+    <div id="form" style="display:none">
+        <label style="font-size: 12px; color: #888;">Tên sản phẩm:</label>
+        <input type="text" id="res_ten">
+        
+        <label style="font-size: 12px; color: #888;">Giá bán:</label>
+        <input type="text" id="res_gia">
+        
+        <label style="font-size: 12px; color: #888;">Size:</label>
+        <input type="text" id="res_size">
+        
+        <div style="display:flex; gap:5px">
+            <input type="text" id="res_anh" placeholder="Link ảnh..." readonly style="flex:1">
+            <button onclick="document.getElementById('fInp').click()" style="width:50px; background:#65676b; color:white; margin:0">📷</button>
+        </div>
+        <input type="file" id="fInp" accept="image/*" capture="environment" style="display:none" onchange="upload(this)">
+        
+        <button class="btn-green" onclick="save()">2. XÁC NHẬN LƯU VÀO SHEETS</button>
+    </div>
 </div>
 
 <script>
-    async function analyze() {
-        const s = document.getElementById('st');
-        const debug = document.getElementById('debugBox');
-        const raw = document.getElementById('rawAiOutput');
-        
-        s.innerHTML = "<span style='color:blue'>⏳ Đang gửi tin nhắn cho AI...</span>";
-        debug.style.display = "none";
+    const st = document.getElementById('st');
+    const debug = document.getElementById('debug');
 
+    async function analyze() {
+        st.innerHTML = "⏳ Đang kết nối AI...";
+        debug.style.display = "none";
+        
         try {
             const res = await fetch('/api/admin/analyze', {
                 method: 'POST',
@@ -23,26 +68,63 @@
                 })
             });
             
-            const d = await res.json();
+            const data = await res.json();
             
-            // HIỆN NỘI DUNG AI GỬI VỀ ĐỂ KIỂM TRA
+            // Hiện log debug cho Đạt xem
             debug.style.display = "block";
-            raw.innerText = JSON.stringify(d); 
+            debug.innerText = "Dữ liệu AI trả về: " + JSON.stringify(data);
 
-            if(!d.success) {
-                s.innerHTML = "<span style='color:red'>❌ Lỗi: " + d.message + "</span>";
-                return;
+            if(data.success) {
+                document.getElementById('form').style.display = "block";
+                document.getElementById('res_ten').value = data.ten || "";
+                document.getElementById('res_gia').value = data.gia || "";
+                document.getElementById('res_size').value = data.size || "";
+                st.innerHTML = "<span style='color:green'>✅ AI đã bóc tách xong!</span>";
+            } else {
+                st.innerHTML = "<span style='color:red'>❌ Lỗi: " + (data.message || "AI không hiểu") + "</span>";
             }
-
-            document.getElementById('form').style.display = "block";
-            document.getElementById('ten').value = d.ten || "";
-            document.getElementById('gia').value = d.gia || "";
-            document.getElementById('size').value = d.size || "";
-            
-            s.innerHTML = "<span style='color:green'>✅ AI đã bóc tách xong!</span>";
         } catch (e) {
-            s.innerHTML = "<span style='color:red'>❌ Không kết nối được Server</span>";
+            st.innerHTML = "<span style='color:red'>❌ Lỗi: Không gọi được Server</span>";
         }
     }
-    // ... Giữ nguyên các hàm upload và save bên dưới ...
+
+    async function upload(el) {
+        if (!el.files[0]) return;
+        st.innerText = "⏳ Đang tải ảnh lên...";
+        const fd = new FormData();
+        fd.append("image", el.files[0]);
+        try {
+            const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
+            const j = await res.json();
+            if(j.success) {
+                document.getElementById('res_anh').value = j.data.url;
+                st.innerHTML = "<span style='color:green'>✅ Đã lấy link ảnh!</span>";
+            } else { st.innerText = "❌ Lỗi tải ảnh"; }
+        } catch (e) { st.innerText = "❌ Lỗi server ảnh"; }
+    }
+
+    async function save() {
+        st.innerText = "⏳ Đang lưu vào Google Sheets...";
+        try {
+            const res = await fetch('/api/admin/save', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ 
+                    password: document.getElementById('pass').value, 
+                    product: {
+                        ten: document.getElementById('res_ten').value,
+                        gia: document.getElementById('res_gia').value,
+                        size: document.getElementById('res_size').value,
+                        anh: document.getElementById('res_anh').value
+                    }
+                })
+            });
+            const d = await res.json();
+            alert(d.message);
+            if(d.success) location.reload();
+        } catch (e) { alert("Lỗi lưu dữ liệu!"); }
+    }
 </script>
+
+</body>
+</html>

@@ -1,175 +1,97 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản Lý Nhập Kho - Hương Kid</title>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nhập Kho Hương Kid</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 15px; color: #333; }
-        .card { background: white; padding: 25px; border-radius: 20px; max-width: 500px; margin: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #1a73e8; margin-bottom: 20px; }
-        label { font-size: 0.9rem; font-weight: bold; color: #555; display: block; margin-top: 10px; }
-        input, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 16px; }
-        input:focus { border-color: #0084ff; outline: none; box-shadow: 0 0 5px rgba(0,132,255,0.2); }
-        
-        button { width: 100%; padding: 15px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 16px; margin-top: 10px; }
-        .btn-ai { background: #0084ff; color: white; }
-        .btn-ai:hover { background: #0073e6; }
-        .btn-save { background: #28a745; color: white; display: none; margin-top: 20px; }
-        .btn-save:hover { background: #218838; }
-        
-        .status-box { text-align: center; margin-top: 15px; min-height: 24px; font-weight: 600; }
-        .loading-spinner { color: #666; }
-        .error-text { color: #dc3545; }
-        .success-text { color: #28a745; }
-
-        .image-section { display: flex; gap: 8px; align-items: center; }
-        .btn-cam { width: 60px; background: #6c757d; color: white; margin: 0; display: flex; justify-content: center; align-items: center; }
+        body { font-family: sans-serif; background: #f0f2f5; padding: 15px; }
+        .card { background: white; padding: 20px; border-radius: 15px; max-width: 500px; margin: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        input, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; margin-top: 10px; }
+        .btn-ai { background: #0084ff; } .btn-save { background: #28a745; display: none; }
+        #status { text-align: center; margin-top: 10px; font-weight: bold; color: #555; }
     </style>
 </head>
 <body>
-
     <div class="card">
         <h2>📦 Nhập Kho Hương Kid</h2>
-        
-        <label>Mật khẩu quản lý:</label>
-        <input type="password" id="pass" placeholder="Nhập mật khẩu để thực hiện...">
-        
-        <label>Nội dung sản phẩm (Văn bản tự nhiên):</label>
-        <textarea id="rawData" rows="4" placeholder="Ví dụ: Áo thun bé trai 120k size 1 tới 10..."></textarea>
-        
-        <button class="btn-ai" id="btnAnalyze" onclick="analyze()">1. PHÂN TÍCH BẰNG AI</button>
+        <input type="password" id="pass" placeholder="Mật khẩu">
+        <textarea id="rawData" rows="4" placeholder="Nhập: Áo thun 120k size 5..."></textarea>
+        <button class="btn-ai" onclick="analyze()">1. PHÂN TÍCH</button>
 
-        <div id="status" class="status-box"></div>
-
-        <div id="preview" style="display:none; border-top: 2px dashed #eee; margin-top: 20px; padding-top: 10px;">
-            <label>Tên sản phẩm:</label>
-            <input type="text" id="res_ten">
-            
-            <label>Giá bán (VNĐ):</label>
-            <input type="number" id="res_gia">
-            
-            <label>Size:</label>
-            <input type="text" id="res_size">
-            
-            <label>Hình ảnh sản phẩm:</label>
-            <div class="image-section">
-                <input type="text" id="res_anh" placeholder="Link hình ảnh sẽ hiện ở đây..." readonly style="background: #f9f9f9;">
-                <button class="btn-cam" onclick="document.getElementById('fInp').click()">📷</button>
+        <div id="preview" style="display:none; margin-top:20px;">
+            <label>Tên:</label><input type="text" id="res_ten">
+            <label>Giá:</label><input type="number" id="res_gia">
+            <label>Size:</label><input type="text" id="res_size">
+            <label>Link Ảnh:</label>
+            <div style="display:flex; gap:5px;">
+                <input type="text" id="res_anh" style="flex:1" readonly>
+                <button onclick="document.getElementById('fInp').click()" style="width:50px; background:#6c757d; margin:0">📷</button>
             </div>
-            
             <input type="file" id="fInp" accept="image/*" capture="environment" style="display:none" onchange="uploadImg(this)">
-            
-            <button class="btn-save" id="btnSave" onclick="save()">2. XÁC NHẬN LƯU VÀO SHEETS</button>
+            <button class="btn-save" id="btnSave" onclick="save()">2. XÁC NHẬN LƯU</button>
         </div>
+        <div id="status"></div>
     </div>
 
     <script>
         const status = document.getElementById('status');
 
-        // HÀM 1: GỬI VĂN BẢN LÊN AI GEMINI
         async function analyze() {
-            const pass = document.getElementById('pass').value;
-            const data = document.getElementById('rawData').value;
-
-            if(!pass || !data) {
-                status.innerHTML = "<span class='error-text'>⚠️ Vui lòng nhập đủ mật khẩu và nội dung!</span>";
-                return;
-            }
-
-            status.innerHTML = "<span class='loading-spinner'>⏳ AI đang bóc tách dữ liệu...</span>";
-            
+            status.innerText = "⏳ AI đang nghĩ...";
             try {
                 const res = await fetch('/api/admin/analyze', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ password: pass, data: data })
+                    body: JSON.stringify({ password: document.getElementById('pass').value, data: document.getElementById('rawData').value })
                 });
-                
                 const result = await res.json();
+                if(!result.success) return status.innerText = result.message;
                 
-                if(!result.success) {
-                    status.innerHTML = `<span class='error-text'>❌ ${result.message}</span>`;
-                    return;
-                }
-                
-                // Hiển thị form kết quả
                 document.getElementById('preview').style.display = "block";
                 document.getElementById('btnSave').style.display = "block";
-                
                 const d = result.data;
                 document.getElementById('res_ten').value = d.ten || "";
                 document.getElementById('res_gia').value = d.gia || "";
                 document.getElementById('res_size').value = d.size || "";
-                document.getElementById('res_anh').value = d.anh || "";
-                
-                status.innerHTML = "<span class='success-text'>✅ AI đã bóc tách xong!</span>";
-            } catch (e) {
-                status.innerHTML = "<span class='error-text'>❌ Lỗi kết nối Server: " + e.message + "</span>";
-            }
+                status.innerText = "✅ Đã phân tích xong!";
+            } catch (e) { status.innerText = "Lỗi kết nối AI"; }
         }
 
-        // HÀM 2: TẢI ẢNH LÊN IMGBB
         async function uploadImg(input) {
-            if (!input.files || !input.files[0]) return;
-
-            status.innerHTML = "<span class='loading-spinner'>⏳ Đang tải ảnh lên ImgBB... (Vui lòng đợi)</span>";
-            
-            const formData = new FormData();
+            if (!input.files[0]) return;
+            const formData = new FormData(); 
             formData.append("image", input.files[0]);
+            status.innerText = "⏳ Đang tải ảnh lên...";
 
             try {
-                // Key ImgBB của Đạt
-                const res = await fetch("https://api.imgbb.com/1/upload?key=6d207e02198a847aa98d0a2a901485a5", { 
-                    method: "POST", 
-                    body: formData 
-                });
-
+                const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
                 const json = await res.json();
-
-                if (json.success) {
+                if(json.success) {
                     document.getElementById('res_anh').value = json.data.url;
-                    status.innerHTML = "<span class='success-text'>✅ Đã tải ảnh và lấy link thành công!</span>";
+                    status.innerText = "✅ Đã lấy được link ảnh!";
                 } else {
-                    status.innerHTML = "<span class='error-text'>❌ Lỗi ImgBB: " + (json.error ? json.error.message : "Thử lại sau") + "</span>";
+                    status.innerText = "❌ Lỗi tải ảnh: " + (json.message || "Kiểm tra lại Key trên Render");
                 }
-            } catch (err) {
-                status.innerHTML = "<span class='error-text'>❌ Lỗi mạng: Không thể tải ảnh lên!</span>";
-            }
+            } catch (e) { status.innerText = "❌ Lỗi Server không phản hồi"; }
         }
 
-        // HÀM 3: GHI VÀO GOOGLE SHEETS
         async function save() {
-            const status = document.getElementById('status');
-            const pass = document.getElementById('pass').value;
-
             const product = {
                 ten: document.getElementById('res_ten').value,
                 gia: document.getElementById('res_gia').value,
                 size: document.getElementById('res_size').value,
                 anh: document.getElementById('res_anh').value
             };
-
-            status.innerHTML = "⏳ Đang ghi vào Google Sheets...";
-
-            try {
-                const res = await fetch('/api/admin/save', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ password: pass, product: product })
-                });
-                
-                const result = await res.json();
-                
-                if(result.success) {
-                    alert("🎉 Chúc mừng Đạt! Đã nhập kho thành công.");
-                    location.reload(); // Reset trang để nhập món mới
-                } else {
-                    status.innerHTML = `<span class='error-text'>❌ ${result.message}</span>`;
-                }
-            } catch (err) {
-                status.innerHTML = "<span class='error-text'>❌ Lỗi lưu dữ liệu: " + err.message + "</span>";
-            }
+            status.innerText = "⏳ Đang ghi vào Sheets...";
+            const res = await fetch('/api/admin/save', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ password: document.getElementById('pass').value, product })
+            });
+            const result = await res.json();
+            alert(result.message);
+            if(result.success) location.reload();
         }
     </script>
 </body>

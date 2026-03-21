@@ -1,22 +1,17 @@
 {
-  "name": "huong-kid-inventory-admin",
+  "name": "kho-huong-kid",
   "version": "1.0.0",
-  "description": "Hệ thống quản lý nhập kho thông minh cho Shop Hương Kid",
+  "description": "He thong nhap kho AI",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "test": "echo \"Error: no test info\" && exit 1"
+    "start": "node index.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "axios": "^1.6.0",
+    "axios": "^1.6.2",
+    "multer": "^1.4.5-lts.1",
+    "form-data": "^4.0.0",
     "google-spreadsheet": "^4.1.1",
-    "google-auth-library": "^9.0.0",
-    "path": "^0.12.7"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "author": "Phan Quốc Đạt",
-  "license": "ISC"
+    "google-auth-library": "^9.4.1"
+  }
 }

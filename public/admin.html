@@ -1,78 +1,78 @@
-<script>
-    const status = document.getElementById('status');
-
-    async function analyze() {
-        status.innerHTML = "<span style='color:blue'>⏳ AI đang nghĩ...</span>";
-        try {
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nhập Kho Hương Kid</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f4f9; padding: 20px; }
+        .container { max-width: 400px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        input, textarea { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-blue { background: #007bff; color: white; }
+        .btn-green { background: #28a745; color: white; margin-top: 10px; }
+        #status { margin-top: 10px; text-align: center; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h3>📦 Nhập Kho Hương Kid</h3>
+        <input type="password" id="pass" placeholder="Mật khẩu">
+        <textarea id="rawData" rows="3" placeholder="Ví dụ: Áo thun 120k size 5"></textarea>
+        <button class="btn-blue" onclick="analyze()">1. PHÂN TÍCH</button>
+        <div id="status"></div>
+        <div id="preview" style="display:none">
+            <input type="text" id="res_ten" placeholder="Tên">
+            <input type="text" id="res_gia" placeholder="Giá">
+            <input type="text" id="res_size" placeholder="Size">
+            <div style="display:flex; gap:5px">
+                <input type="text" id="res_anh" placeholder="Link ảnh" readonly>
+                <button onclick="document.getElementById('fInp').click()" style="width:50px; background:#666; color:white">📷</button>
+            </div>
+            <input type="file" id="fInp" accept="image/*" capture="environment" style="display:none" onchange="upload(this)">
+            <button class="btn-green" onclick="save()">2. XÁC NHẬN LƯU</button>
+        </div>
+    </div>
+    <script>
+        async function analyze() {
+            const st = document.getElementById('status');
+            st.innerText = "⏳ Đang phân tích...";
             const res = await fetch('/api/admin/analyze', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ password: document.getElementById('pass').value, data: document.getElementById('rawData').value })
+            });
+            const d = await res.json();
+            if(!d.success) return st.innerText = "❌ Lỗi: " + d.message;
+            document.getElementById('preview').style.display = "block";
+            document.getElementById('res_ten').value = d.ten;
+            document.getElementById('res_gia').value = d.gia;
+            document.getElementById('res_size').value = d.size;
+            st.innerText = "✅ Phân tích xong!";
+        }
+        async function upload(el) {
+            const st = document.getElementById('status');
+            st.innerText = "⏳ Đang tải ảnh...";
+            const fd = new FormData(); fd.append("image", el.files[0]);
+            const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
+            const j = await res.json();
+            if(j.success) {
+                document.getElementById('res_anh').value = j.data.url;
+                st.innerText = "✅ Đã có ảnh!";
+            } else { st.innerText = "❌ Lỗi tải ảnh"; }
+        }
+        async function save() {
+            const res = await fetch('/api/admin/save', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ 
                     password: document.getElementById('pass').value, 
-                    data: document.getElementById('rawData').value 
+                    product: { ten: document.getElementById('res_ten').value, gia: document.getElementById('res_gia').value, size: document.getElementById('res_size').value, anh: document.getElementById('res_anh').value }
                 })
             });
-            const result = await res.json();
-            
-            // Hiện các ô nhập liệu
-            document.getElementById('preview').style.display = "block";
-            document.getElementById('btnSave').style.display = "block";
-            
-            document.getElementById('res_ten').value = result.ten || "";
-            document.getElementById('res_gia').value = result.gia || "";
-            document.getElementById('res_size').value = result.size || "";
-            
-            status.innerHTML = result.success ? "<span style='color:green'>✅ Đã phân tích xong!</span>" : "<span style='color:red'>❌ Lỗi: " + result.message + "</span>";
-        } catch (e) {
-            status.innerHTML = "<span style='color:red'>❌ Lỗi kết nối Server</span>";
+            const d = await res.json();
+            alert(d.message); if(d.success) location.reload();
         }
-    }
-
-    async function uploadImg(input) {
-        if (!input.files[0]) return;
-        status.innerHTML = "<span style='color:blue'>⏳ Đang tải ảnh lên ImgBB...</span>";
-        const formData = new FormData();
-        formData.append("image", input.files[0]);
-
-        try {
-            const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
-            const json = await res.json();
-
-            if(json.success && json.data) {
-                document.getElementById('res_anh').value = json.data.url;
-                status.innerHTML = "<span style='color:green'>✅ Tải ảnh thành công!</span>";
-            } else {
-                status.innerHTML = "<span style='color:red'>❌ Lỗi tải ảnh: Hãy kiểm tra Key ImgBB trên Render</span>";
-            }
-        } catch (e) {
-            status.innerHTML = "<span style='color:red'>❌ Server không phản hồi khi tải ảnh</span>";
-        }
-    }
-
-    async function save() {
-        status.innerHTML = "⏳ Đang gửi dữ liệu vào Sheets...";
-        const product = {
-            ten: document.getElementById('res_ten').value,
-            gia: document.getElementById('res_gia').value,
-            size: document.getElementById('res_size').value,
-            anh: document.getElementById('res_anh').value
-        };
-
-        try {
-            const res = await fetch('/api/admin/save', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ password: document.getElementById('pass').value, product })
-            });
-            const result = await res.json();
-            if(result.success) {
-                alert("🎉 Tuyệt vời! Đã nhập kho thành công.");
-                location.reload();
-            } else {
-                status.innerHTML = "<span style='color:red'>❌ Lỗi: " + result.message + "</span>";
-            }
-        } catch (err) {
-            status.innerHTML = "<span style='color:red'>❌ Lỗi lưu vào Sheets</span>";
-        }
-    }
-</script>
+    </script>
+</body>
+</html>

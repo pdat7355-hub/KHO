@@ -1,73 +1,76 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nhập Kho Hương Kid</title>
+    <title>Kho Hương Kid</title>
     <style>
-        body { font-family: sans-serif; background: #f4f4f9; padding: 20px; }
-        .container { max-width: 400px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        body { font-family: sans-serif; background: #eee; padding: 20px; }
+        .box { max-width: 400px; margin: auto; background: white; padding: 20px; border-radius: 10px; }
         input, textarea { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .btn-blue { background: #007bff; color: white; }
-        .btn-green { background: #28a745; color: white; margin-top: 10px; }
-        #status { margin-top: 10px; text-align: center; font-size: 14px; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        .blue { background: #007bff; color: white; }
+        .green { background: #28a745; color: white; }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="box">
         <h3>📦 Nhập Kho Hương Kid</h3>
         <input type="password" id="pass" placeholder="Mật khẩu">
         <textarea id="rawData" rows="3" placeholder="Ví dụ: Áo thun 120k size 5"></textarea>
-        <button class="btn-blue" onclick="analyze()">1. PHÂN TÍCH</button>
-        <div id="status"></div>
-        <div id="preview" style="display:none">
-            <input type="text" id="res_ten" placeholder="Tên">
-            <input type="text" id="res_gia" placeholder="Giá">
-            <input type="text" id="res_size" placeholder="Size">
+        <button class="blue" onclick="analyze()">1. PHÂN TÍCH</button>
+        <div id="st" style="margin: 10px 0; text-align: center; font-weight: bold;"></div>
+        
+        <div id="form" style="display:none">
+            <input type="text" id="ten" placeholder="Tên">
+            <input type="text" id="gia" placeholder="Giá">
+            <input type="text" id="size" placeholder="Size">
             <div style="display:flex; gap:5px">
-                <input type="text" id="res_anh" placeholder="Link ảnh" readonly>
-                <button onclick="document.getElementById('fInp').click()" style="width:50px; background:#666; color:white">📷</button>
+                <input type="text" id="anh" placeholder="Link ảnh" readonly>
+                <button onclick="document.getElementById('f').click()" style="width:50px; background:#666; color:white; margin:0">📷</button>
             </div>
-            <input type="file" id="fInp" accept="image/*" capture="environment" style="display:none" onchange="upload(this)">
-            <button class="btn-green" onclick="save()">2. XÁC NHẬN LƯU</button>
+            <input type="file" id="f" accept="image/*" capture="environment" style="display:none" onchange="up(this)">
+            <button class="green" onclick="save()">2. XÁC NHẬN LƯU</button>
         </div>
     </div>
+
     <script>
         async function analyze() {
-            const st = document.getElementById('status');
-            st.innerText = "⏳ Đang phân tích...";
+            const s = document.getElementById('st');
+            s.innerText = "⏳ Đang đọc...";
             const res = await fetch('/api/admin/analyze', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ password: document.getElementById('pass').value, data: document.getElementById('rawData').value })
             });
             const d = await res.json();
-            if(!d.success) return st.innerText = "❌ Lỗi: " + d.message;
-            document.getElementById('preview').style.display = "block";
-            document.getElementById('res_ten').value = d.ten;
-            document.getElementById('res_gia').value = d.gia;
-            document.getElementById('res_size').value = d.size;
-            st.innerText = "✅ Phân tích xong!";
+            if(!d.success) return s.innerText = "❌ Lỗi: " + d.message;
+            document.getElementById('form').style.display = "block";
+            document.getElementById('ten').value = d.ten || "";
+            document.getElementById('gia').value = d.gia || "";
+            document.getElementById('size').value = d.size || "";
+            s.innerText = "✅ Phân tích xong!";
         }
-        async function upload(el) {
-            const st = document.getElementById('status');
-            st.innerText = "⏳ Đang tải ảnh...";
+
+        async function up(el) {
+            const s = document.getElementById('st');
+            s.innerText = "⏳ Đang tải ảnh...";
             const fd = new FormData(); fd.append("image", el.files[0]);
             const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
             const j = await res.json();
             if(j.success) {
-                document.getElementById('res_anh').value = j.data.url;
-                st.innerText = "✅ Đã có ảnh!";
-            } else { st.innerText = "❌ Lỗi tải ảnh"; }
+                document.getElementById('anh').value = j.data.url;
+                s.innerText = "✅ Đã có ảnh!";
+            } else { s.innerText = "❌ Lỗi ảnh"; }
         }
+
         async function save() {
             const res = await fetch('/api/admin/save', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ 
                     password: document.getElementById('pass').value, 
-                    product: { ten: document.getElementById('res_ten').value, gia: document.getElementById('res_gia').value, size: document.getElementById('res_size').value, anh: document.getElementById('res_anh').value }
+                    product: { ten: document.getElementById('ten').value, gia: document.getElementById('gia').value, size: document.getElementById('size').value, anh: document.getElementById('anh').value }
                 })
             });
             const d = await res.json();

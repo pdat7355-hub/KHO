@@ -1,7 +1,6 @@
 {
   "name": "kho-huong-kid",
   "version": "1.0.0",
-  "description": "He thong nhap kho AI Huong Kid",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"

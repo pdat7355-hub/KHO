@@ -1,160 +1,96 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📦 Kho Hương Kid - AI Admin</title>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📦 Kho Hương Kid - Admin</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 20px; color: #333; }
-        .card { background: white; padding: 25px; border-radius: 15px; max-width: 500px; margin: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #007bff; margin-bottom: 20px; }
-        label { font-weight: bold; font-size: 14px; color: #555; display: block; margin-top: 15px; }
-        input, textarea { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 15px; font-size: 16px; }
-        .btn-ai { background: #007bff; color: white; }
-        .btn-ai:hover { background: #0056b3; }
-        .btn-save { background: #28a745; color: white; display: none; }
-        .btn-save:hover { background: #218838; }
+        body { font-family: sans-serif; background: #f0f2f5; padding: 15px; }
+        .card { background: white; padding: 20px; border-radius: 15px; max-width: 450px; margin: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        input, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; margin-top: 10px; font-size: 16px; }
+        .btn-ai { background: #0084ff; }
+        .btn-save { background: #28a745; display: none; }
         #status { text-align: center; margin-top: 15px; font-weight: bold; min-height: 24px; }
-        .img-box { display: flex; gap: 10px; align-items: center; }
-        .btn-cam { width: 60px; background: #6c757d; color: white; margin: 0; }
+        .img-row { display: flex; gap: 5px; }
     </style>
 </head>
 <body>
-
     <div class="card">
         <h2>📦 Nhập Kho Hương Kid</h2>
-        
-        <label>Mật khẩu:</label>
-        <input type="password" id="pass" placeholder="Nhập mật khẩu quản lý...">
-        
-        <label>Nội dung (Nhập tự nhiên):</label>
-        <textarea id="rawData" rows="3" placeholder="Ví dụ: Áo khoác 250k size L chất phao..."></textarea>
-        
+        <input type="password" id="pass" placeholder="Mật khẩu quản lý">
+        <textarea id="rawData" rows="3" placeholder="Ví dụ: Váy hoa 150k size 2-6..."></textarea>
         <button class="btn-ai" onclick="analyze()">1. PHÂN TÍCH DỮ LIỆU</button>
 
         <div id="status"></div>
 
-        <div id="preview" style="display:none; border-top: 2px dashed #eee; margin-top: 20px;">
-            <label>Tên sản phẩm:</label>
-            <input type="text" id="res_ten">
-            
-            <label>Giá bán:</label>
-            <input type="number" id="res_gia">
-            
-            <label>Size:</label>
-            <input type="text" id="res_size">
-            
-            <label>Hình ảnh:</label>
-            <div class="img-box">
-                <input type="text" id="res_anh" placeholder="Link ảnh..." readonly style="background: #f9f9f9;">
-                <button class="btn-cam" onclick="document.getElementById('fInp').click()">📷</button>
+        <div id="preview" style="display:none; border-top: 1px solid #eee; margin-top: 15px;">
+            <input type="text" id="res_ten" placeholder="Tên SP">
+            <input type="number" id="res_gia" placeholder="Giá">
+            <input type="text" id="res_size" placeholder="Size">
+            <div class="img-row">
+                <input type="text" id="res_anh" placeholder="Link ảnh..." readonly style="flex:1">
+                <button onclick="document.getElementById('fInp').click()" style="width:50px; background:#6c757d; margin:0">📷</button>
             </div>
             <input type="file" id="fInp" accept="image/*" capture="environment" style="display:none" onchange="uploadImg(this)">
-            
-            <button class="btn-save" id="btnSave" onclick="save()">2. XÁC NHẬN LƯU VÀO SHEETS</button>
+            <button class="btn-save" id="btnSave" onclick="save()">2. XÁC NHẬN LƯU</button>
         </div>
     </div>
 
     <script>
         const status = document.getElementById('status');
 
-        // HÀM 1: GỌI AI PHÂN TÍCH
         async function analyze() {
-            const pass = document.getElementById('pass').value;
-            const text = document.getElementById('rawData').value;
-
-            if(!pass || !text) {
-                status.innerHTML = "<span style='color:red'>⚠️ Vui lòng nhập đủ pass và nội dung!</span>";
-                return;
-            }
-
-            status.innerHTML = "<span style='color:blue'>⏳ AI đang xử lý, Đạt đợi tí nhé...</span>";
-            
+            status.innerHTML = "<span style='color:blue'>⏳ AI đang đọc dữ liệu...</span>";
             try {
                 const res = await fetch('/api/admin/analyze', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ password: pass, data: text })
+                    body: JSON.stringify({ password: document.getElementById('pass').value, data: document.getElementById('rawData').value })
                 });
-                
                 const result = await res.json();
-                console.log("Dữ liệu nhận được:", result); // Kiểm tra trong F12
-
-                if(!result.success) {
-                    status.innerHTML = "<span style='color:red'>❌ " + result.message + "</span>";
-                    return;
-                }
+                if(!result.success) { status.innerHTML = "<span style='color:red'>❌ " + result.message + "</span>"; return; }
                 
-                // Mở phần xem trước
                 document.getElementById('preview').style.display = "block";
                 document.getElementById('btnSave').style.display = "block";
-                
-                // ĐIỀN DỮ LIỆU (Kiểm tra cả 2 trường hợp: có .data hoặc không)
-                const data = result.data || result; 
-                document.getElementById('res_ten').value = data.ten || "";
-                document.getElementById('res_gia').value = data.gia || "";
-                document.getElementById('res_size').value = data.size || "";
-                
-                status.innerHTML = "<span style='color:green'>✅ Xong! Đạt kiểm tra lại rồi Lưu nhé.</span>";
-            } catch (e) {
-                status.innerHTML = "<span style='color:red'>❌ Lỗi: Không kết nối được Server</span>";
-            }
+                document.getElementById('res_ten').value = result.ten || "";
+                document.getElementById('res_gia').value = result.gia || "";
+                document.getElementById('res_size').value = result.size || "";
+                status.innerHTML = "<span style='color:green'>✅ Đã phân tích xong!</span>";
+            } catch (e) { status.innerHTML = "<span style='color:red'>❌ Lỗi kết nối Server</span>"; }
         }
 
-        // HÀM 2: TẢI ẢNH LÊN QUA SERVER (DÙNG KEY TRÊN RENDER)
         async function uploadImg(input) {
             if (!input.files[0]) return;
-            
             status.innerHTML = "<span style='color:blue'>⏳ Đang tải ảnh lên...</span>";
-            const formData = new FormData();
-            formData.append("image", input.files[0]);
-
+            const formData = new FormData(); formData.append("image", input.files[0]);
             try {
                 const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
                 const json = await res.json();
-
                 if(json.success) {
                     document.getElementById('res_anh').value = json.data.url;
-                    status.innerHTML = "<span style='color:green'>✅ Đã lấy link ảnh thành công!</span>";
-                } else {
-                    status.innerHTML = "<span style='color:red'>❌ Lỗi ảnh: Kiểm tra Key trên Render</span>";
-                }
-            } catch (e) {
-                status.innerHTML = "<span style='color:red'>❌ Lỗi: Server không nhận ảnh</span>";
-            }
+                    status.innerHTML = "<span style='color:green'>✅ Đã có link ảnh!</span>";
+                } else { status.innerHTML = "<span style='color:red'>❌ Lỗi: Kiểm tra Key Render</span>"; }
+            } catch (e) { status.innerHTML = "<span style='color:red'>❌ Lỗi Server không nhận ảnh</span>"; }
         }
 
-        // HÀM 3: LƯU VÀO GOOGLE SHEETS
         async function save() {
-            status.innerHTML = "⏳ Đang ghi vào Google Sheets...";
+            status.innerHTML = "⏳ Đang ghi vào Sheets...";
             const product = {
                 ten: document.getElementById('res_ten').value,
                 gia: document.getElementById('res_gia').value,
                 size: document.getElementById('res_size').value,
                 anh: document.getElementById('res_anh').value
             };
-
             try {
                 const res = await fetch('/api/admin/save', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ 
-                        password: document.getElementById('pass').value, 
-                        product: product 
-                    })
+                    body: JSON.stringify({ password: document.getElementById('pass').value, product })
                 });
-                
                 const result = await res.json();
-                if(result.success) {
-                    alert("🎉 Nhập kho thành công rồi Đạt nhé!");
-                    location.reload(); 
-                } else {
-                    status.innerHTML = "<span style='color:red'>❌ Lỗi Sheets: " + result.message + "</span>";
-                }
-            } catch (err) {
-                status.innerHTML = "<span style='color:red'>❌ Lỗi lưu dữ liệu!</span>";
-            }
+                alert(result.message);
+                if(result.success) location.reload();
+            } catch (err) { status.innerHTML = "❌ Lỗi lưu dữ liệu!"; }
         }
     </script>
 </body>

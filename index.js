@@ -1,65 +1,66 @@
 const express = require('express');
 const path = require('path');
+const axios = require('axios');
+const FormData = require('form-data');
+const multer = require('multer');
 const { parseInventoryData } = require('./src/aiService');
 const { saveToSheets } = require('./src/googleSheets');
 
 const app = express();
+const upload = multer(); // Để xử lý dữ liệu file từ Form
 
-// Middleware để đọc JSON từ request body
 app.use(express.json());
-
-// Phục vụ các file tĩnh (CSS, JS, Hình ảnh) trong thư mục public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- CÁCH SỬA LỖI CANNOT GET / ---
-// Khi Đạt truy cập tên miền chính, server sẽ trả về file admin.html
+// Trang chủ mặc định
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// Cổng 1: AI Phân tích thông tin từ văn bản của Đạt
+// Cổng 1: AI Phân tích
 app.post('/api/admin/analyze', async (req, res) => {
     const { password, data } = req.body;
-    
-    // Kiểm tra mật khẩu (lấy từ Environment Variables trên Render)
     if (password !== process.env.ADMIN_PASSWORD) {
-        console.warn("⚠️ Cảnh báo: Có người thử nhập sai mật khẩu!");
         return res.json({ success: false, message: "❌ Sai mật khẩu quản lý!" });
     }
-
     try {
-        console.log("🤖 Đang gửi dữ liệu cho AI bóc tách...");
         const result = await parseInventoryData(data);
-        
-        if (!result) throw new Error("AI không phản hồi dữ liệu phù hợp.");
-        
-        console.log("✅ AI bóc tách thành công:", result);
-        res.json({ success: true, ...result });
+        res.json({ success: true, data: result });
     } catch (e) {
-        console.error("❌ Lỗi AI Service:", e.message);
         res.json({ success: false, message: "Lỗi AI: " + e.message });
     }
 });
 
-// Cổng 2: Lưu dữ liệu chính thức vào Google Sheets
+// Cổng TRUNG GIAN: Upload ảnh lên ImgBB (Dùng Key từ Render)
+app.post('/api/admin/upload', upload.single('image'), async (req, res) => {
+    try {
+        if (!req.file) throw new Error("Chưa có file ảnh");
+        
+        const formData = new FormData();
+        // Chuyển buffer ảnh sang dạng Base64 để gửi cho ImgBB
+        formData.append('image', req.file.buffer.toString('base64'));
+        
+        const apiKey = process.env.IMGBB_API_KEY;
+        const response = await axios.post(`https://api.imgbb.com/1/upload?key=${apiKey}`, formData, {
+            headers: formData.getHeaders()
+        });
+        
+        res.json(response.data);
+    } catch (error) {
+        console.error("Lỗi Upload:", error.message);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Cổng 2: Lưu vào Sheets
 app.post('/api/admin/save', async (req, res) => {
     try {
-        const productData = req.body.product;
-        console.log("📊 Đang ghi vào Google Sheets:", productData);
-        
-        await saveToSheets(productData);
-        
-        console.log("✅ Ghi Sheets thành công!");
+        await saveToSheets(req.body.product);
         res.json({ success: true, message: "✅ Đã nhập kho thành công!" });
     } catch (err) {
-        console.error("❌ Lỗi Google Sheets:", err.message);
         res.json({ success: false, message: "❌ Lỗi Sheets: " + err.message });
     }
 });
 
-// Cấu hình Port linh hoạt cho Render
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-    console.log(`🚀 Hệ thống Nhập Kho Hương Kid đang chạy tại: http://localhost:${PORT}`);
-    console.log(`📡 Trên Render: https://kho-hhe7.onrender.com`);
-});
+app.listen(PORT, () => console.log(`🚀 Hệ thống chạy tại Port ${PORT}`));

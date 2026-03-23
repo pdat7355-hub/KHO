@@ -2,67 +2,56 @@ const axios = require('axios');
 
 async function parseInventoryData(userInput) {
     try {
-        const apiKey = process.env.OPENROUTER_API_KEY;
+        // Ưu tiên lấy Key từ Render (Environment Variables), nếu không có mới dùng Key dự phòng
+        const apiKey = process.env.OPENROUTER_API_KEY || "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";
         
-        // Kiểm tra xem Key đã được nạp chưa
-        if (!apiKey) {
-            console.error("❌ LỖI: Chưa có OPENROUTER_API_KEY trong Environment Variables.");
-            return { success: false, message: "Server chưa nạp được API Key. Đạt kiểm tra tab Environment trên Render nhé!" };
-        }
-
-        console.log("📡 Đang gửi yêu cầu tới OpenRouter với model Gemini 2.0 Flash...");
+        console.log("📡 Đang gửi dữ liệu sang Gemini 2.0 Flash...");
 
         const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
             model: "google/gemini-2.0-flash-001",
             messages: [
                 {
                     role: "system",
-                    content: "Bạn là trợ lý kho. Phân tích nội dung và trả về JSON duy nhất: {'ten': '...', 'gia': '...', 'size': '...', 'anh': ''}. Không giải thích gì thêm."
+                    content: "Bạn là trợ lý kho Hương Kid. Nhiệm vụ: Trích xuất thông tin sản phẩm từ tin nhắn thành JSON thuần. Định dạng: {\"ten\": \"...\", \"gia\": \"...\", \"size\": \"...\", \"anh\": \"\"}. Không giải thích, không thêm văn bản thừa."
                 },
                 {
                     role: "user",
                     content: userInput
                 }
-            ],
-            // Các header bắt buộc để OpenRouter không chặn request từ Render
+            ]
+        }, {
             headers: {
                 "Authorization": `Bearer ${apiKey.trim()}`,
                 "Content-Type": "application/json",
-                "HTTP-Referer": "https://render.com", 
-                "X-Title": "Huong Kid Admin System"
-            }
-        }, {
-            timeout: 10000 // Chờ tối đa 10 giây
+                "HTTP-Referer": "https://render.com", // Bắt buộc có để OpenRouter chấp nhận
+                "X-Title": "Huong Kid Inventory"
+            },
+            timeout: 15000
         });
 
         if (response.data && response.data.choices && response.data.choices[0]) {
-            let text = response.data.choices[0].message.content;
+            let aiText = response.data.choices[0].message.content;
             
-            // Làm sạch định dạng Markdown nếu AI trả về (```json ... ```)
-            text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+            // Làm sạch chuỗi JSON (xóa ```json và ```)
+            aiText = aiText.replace(/```json/g, "").replace(/```/g, "").trim();
             
-            console.log("✅ AI phản hồi thành công:", text);
+            console.log("✅ AI bóc tách thành công:", aiText);
             
-            const jsonData = JSON.parse(text);
-            return { success: true, ...jsonData };
+            const finalData = JSON.parse(aiText);
+            return { success: true, ...finalData };
         } else {
-            console.error("❌ OpenRouter trả về cấu hình lạ:", response.data);
-            return { success: false, message: "AI trả về dữ liệu trống." };
+            return { success: false, message: "AI trả về dữ liệu không xác định" };
         }
 
     } catch (error) {
-        // --- ĐOẠN NÀY SẼ HIỆN LỖI THẬT SỰ TRÊN LOG RENDER ---
-        let errorMsg = error.message;
-        if (error.response) {
-            // Lỗi từ phía OpenRouter trả về (Sai Key, Hết hạn, Sai Model...)
-            errorMsg = `Mã lỗi ${error.response.status}: ${JSON.stringify(error.response.data)}`;
-        }
+        let status = error.response ? error.response.status : "Unknown";
+        let detail = error.response ? JSON.stringify(error.response.data) : error.message;
         
-        console.error("❌ LỖI OPENROUTER CHI TIẾT:", errorMsg);
+        console.error(`❌ Lỗi AI (${status}):`, detail);
         
         return { 
             success: false, 
-            message: "AI không phản hồi. Lỗi: " + (error.response?.status || error.message) 
+            message: `Lỗi AI (${status}). Đạt kiểm tra lại số dư tài khoản OpenRouter nhé!` 
         };
     }
 }

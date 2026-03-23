@@ -14,9 +14,10 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ==========================================
-// 1. CẤU HÌNH BIẾN MÔI TRƯỜNG (LẤY TỪ RENDER)
+// 1. CẤU HÌNH BIẾN MÔI TRƯỜNG (Lấy từ Render)
 // ==========================================
-const GOOGLE_AI_KEY = process.env.GOOGLE_AI_KEY; // Dán cái Key Free Đạt vừa chụp vào Render với tên này
+// Đạt nhớ đặt tên biến trên Render là: GOOGLE_AI_KEY
+const GOOGLE_AI_KEY = process.env.GOOGLE_AI_KEY ? process.env.GOOGLE_AI_KEY.trim() : null;
 const ADMIN_PASS = process.env.ADMIN_PASSWORD;
 const IMGBB_KEY = process.env.IMGBB_API_KEY;
 const SHEET_ID = process.env.ID_FILE_PRODUCT;
@@ -29,41 +30,49 @@ const auth = new JWT({
 });
 
 // ==========================================
-// 2. LOGIC AI - BÓC TÁCH DỮ LIỆU (FREE 100%)
+// 2. HÀM AI BÓC TÁCH DỮ LIỆU (Dùng Gemini Free)
 // ==========================================
 async function aiAnalyze(userInput) {
+    if (!GOOGLE_AI_KEY) {
+        throw new Error("Chưa cấu hình GOOGLE_AI_KEY trên Render!");
+    }
+
     try {
         const genAI = new GoogleGenerativeAI(GOOGLE_AI_KEY);
+        // Dùng bản flash cho nhanh và miễn phí
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-        const prompt = `Bạn là trợ lý kho Hương Kid. Nhiệm vụ: Phân tích tin nhắn thành JSON:
-        {"ten": "...", "gia": "...", "size": "...", "anh": ""}.
-        Chỉ trả về JSON duy nhất, không giải thích gì thêm.
-        Tin nhắn: "${userInput}"`;
+        const prompt = `Bạn là trợ lý kho Hương Kid. Nhiệm vụ: Phân tích nội dung tin nhắn thành JSON chuẩn.
+        Định dạng: {"ten": "Tên sản phẩm", "gia": "Giá tiền", "size": "Kích cỡ", "anh": ""}.
+        Lưu ý: Chỉ trả về duy nhất chuỗi JSON, không giải thích, không thêm chữ.
+        Nội dung: "${userInput}"`;
 
         const result = await model.generateContent(prompt);
-        let text = result.response.text().replace(/```json/g, "").replace(/```/g, "").trim();
+        const response = await result.response;
+        let text = response.text().replace(/```json/g, "").replace(/```/g, "").trim();
+        
+        console.log("✅ AI Response:", text);
         return JSON.parse(text);
     } catch (e) {
-        console.error("Lỗi AI Studio:", e.message);
+        console.error("❌ Lỗi AI Studio:", e.message);
         throw e;
     }
 }
 
 // ==========================================
-// 3. CÁC ROUTE XỬ LÝ GIAO DIỆN & DỮ LIỆU
+// 3. CÁC ROUTE XỬ LÝ
 // ==========================================
 
-// Trang chủ
+// Trang chủ Admin
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// Bước 1: Phân tích bằng AI
+// BƯỚC 1: Phân tích nội dung bằng AI
 app.post('/api/admin/analyze', async (req, res) => {
     try {
         const { password, data } = req.body;
-        if (password !== ADMIN_PASS) return res.json({ success: false, message: "Sai mật khẩu nè Đạt ơi!" });
+        if (password !== ADMIN_PASS) return res.json({ success: false, message: "Sai mật khẩu!" });
         
         const result = await aiAnalyze(data);
         res.json({ success: true, ...result });
@@ -72,7 +81,7 @@ app.post('/api/admin/analyze', async (req, res) => {
     }
 });
 
-// Bước 2: Tải ảnh lên ImgBB
+// BƯỚC 2: Tải ảnh lên ImgBB (Nếu Đạt có chọn ảnh)
 app.post('/api/admin/upload', upload.single('image'), async (req, res) => {
     try {
         const body = new URLSearchParams();
@@ -84,7 +93,7 @@ app.post('/api/admin/upload', upload.single('image'), async (req, res) => {
     }
 });
 
-// Bước 3: Lưu vào Google Sheets
+// BƯỚC 3: Lưu dữ liệu cuối cùng vào Google Sheets
 app.post('/api/admin/save', async (req, res) => {
     try {
         const { password, product } = req.body;
@@ -102,11 +111,14 @@ app.post('/api/admin/save', async (req, res) => {
             'Ngày': new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
         });
 
-        res.json({ success: true, message: "✅ Đã lưu kho Hương Kid thành công!" });
+        res.json({ success: true, message: "✅ Lưu kho thành công!" });
     } catch (e) {
         res.json({ success: false, message: "Lỗi lưu Sheets: " + e.message });
     }
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🚀 Hệ thống Hương Kid đang chạy tại cổng ${PORT}`));
+app.listen(PORT, () => {
+    console.log(`🚀 Hệ thống Hương Kid Online tại cổng ${PORT}`);
+    console.log(`🔑 Trạng thái Key AI: ${GOOGLE_AI_KEY ? "Đã nạp" : "CHƯA CÓ"}`);
+});
